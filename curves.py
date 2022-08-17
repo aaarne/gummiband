@@ -119,7 +119,7 @@ class _Curve:
         _, point_on_curve = self.retract(point)
         return point_on_curve - point
 
-    def derivative(self, t, dt=1e-3, order=5):
+    def derivative(self, t, dt=1e-3, order=5, n=1):
         mi, ma = self.range
         ho = order >> 1
         if t - ho * dt < mi:
@@ -128,7 +128,7 @@ class _Curve:
             tprime = t - ho * dt
         else:
             tprime = t
-        return scipy.misc.derivative(self.__call__, tprime, dx=dt)
+        return scipy.misc.derivative(self.__call__, tprime, dx=dt, n=n)
 
     def tangent(self, t):
         d = self.derivative(t)
