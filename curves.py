@@ -14,12 +14,13 @@ def arclength_parametrization(line):
 
 
 class _Curve:
-    def __init__(self, line, parameters, lazy=True):
+    def __init__(self, line, parameters, lazy=True, interpolation_type='quadratic'):
         self._points = line
         n = line.shape[1]
         self._dims = n
         self._parameters = parameters
         self._arclength = arclength_parametrization(line)
+        self._intkind = interpolation_type
         if lazy:
             self._ints = None
             self._kdtt = None
@@ -53,7 +54,7 @@ class _Curve:
         return self._kdt.query(point, **kwargs)
 
     def _create_interpolators(self):
-        return [interp1d(self._parameters, self._points[:, i]) for i in range(self._dims)]
+        return [interp1d(self._parameters, self._points[:, i], kind=self._intkind) for i in range(self._dims)]
 
     def create_point_property_interpolator(self, prop):
         return interp1d(self._parameters, prop)
