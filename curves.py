@@ -20,7 +20,6 @@ class _Curve:
         self._dims = n
         self._parameters = parameters
         self._arclength = arclength_parametrization(line)
-        self._kdtree = None
         if lazy:
             self._ints = None
             self._kdtt = None
