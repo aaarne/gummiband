@@ -134,6 +134,9 @@ class _Curve:
         d = self.derivative(t)
         return d / np.linalg.norm(d)
 
+    def normal(self, t):
+        return np.array([[0, -1], [1, 0]]) @ self.tangent(t)
+
     def parametrize(self, point):
         t, _ = self.retract(point)
         return t
