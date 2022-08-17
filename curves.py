@@ -137,6 +137,14 @@ class _Curve:
     def normal(self, t):
         return np.array([[0, -1], [1, 0]]) @ self.tangent(t)
 
+    def signed_curvature(self, t):
+        d = self.derivative(t)
+        dd = self.derivative(t, n=2)
+        return np.linalg.det(np.array([d, dd])) / np.linalg.norm(d)**3
+
+    def curvature(self, t):
+        return np.abs(self.signed_curvature(t))
+
     def parametrize(self, point):
         t, _ = self.retract(point)
         return t
