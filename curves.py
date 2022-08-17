@@ -57,7 +57,7 @@ class _Curve:
         return [interp1d(self._parameters, self._points[:, i], kind=self._intkind) for i in range(self._dims)]
 
     def create_point_property_interpolator(self, prop):
-        return interp1d(self._parameters, prop)
+        return interp1d(self._parameters, prop, kind=self._intkind)
 
     def _query_single(self, t):
         return np.array([
@@ -271,7 +271,7 @@ class ClosedCurve(_Curve):
         augmented_params[0] = -np.pi if self.parameters[0] > -np.pi + 1e-3 else -np.pi - np.mean(np.diff(self.parameters))
         augmented_params[-1] = np.pi if self.parameters[-1] < np.pi - 1e-3 else np.pi + np.mean(np.diff(self.parameters))
         p = np.r_[prop[-1], prop, prop[0]]
-        int = interp1d(augmented_params, p, fill_value='extrapolate')
+        int = interp1d(augmented_params, p, fill_value='extrapolate', kind=self._intkind)
         
         def f(t):
             new_t = np.arctan2(np.sin(t), np.cos(t))
