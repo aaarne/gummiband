@@ -119,7 +119,7 @@ class _Curve:
         _, point_on_curve = self.retract(point)
         return point_on_curve - point
 
-    def derivative(self, t, dt=1e-3, order=5, n=1):
+    def derivative(self, t, dt=1e-2, order=5, n=1):
         mi, ma = self.range
         ho = order >> 1
         if t - ho * dt < mi:
@@ -251,13 +251,15 @@ class ArcLengthParametrizedCurve(_Curve):
 
 class ClosedCurve(_Curve):
     def __init__(self, points, **kwargs):
-        p = np.zeros((points.shape[0] + 1, points.shape[1]))
-        p[0:-1, :] = points
-        p[-1, :] = points[0, :]
-        self._cyclic_points = p
+        if np.linalg.norm(points[0] - points[-1]) < 1e-6:
+            p = points
+        else:
+            p = np.zeros((points.shape[0] + 1, points.shape[1]))
+            p[0:-1, :] = points
+            p[-1, :] = points[0, :]
         al = arclength_parametrization(p)
         al = 2*np.pi*al/al[-1] - np.pi
-        super().__init__(points, al[0:-1], **kwargs)
+        super().__init__(p, al, **kwargs)
 
     def _interpolate_parameters(self, values, weights):
         sins, coss = np.sin(values), np.cos(values)
@@ -268,9 +270,9 @@ class ClosedCurve(_Curve):
     def create_point_property_interpolator(self, prop):
         augmented_params = np.zeros(self.n_points + 2)
         augmented_params[1:-1] = self.parameters
-        augmented_params[0] = -np.pi if self.parameters[0] > -np.pi + 1e-3 else -np.pi - np.mean(np.diff(self.parameters))
-        augmented_params[-1] = np.pi if self.parameters[-1] < np.pi - 1e-3 else np.pi + np.mean(np.diff(self.parameters))
-        p = np.r_[prop[-1], prop, prop[0]]
+        augmented_params[0] = -np.pi - np.mean(np.diff(self.parameters))
+        augmented_params[-1] = np.pi + np.mean(np.diff(self.parameters))
+        p = np.r_[prop[-2], prop, prop[1]]
         int = interp1d(augmented_params, p, fill_value='extrapolate', kind=self._intkind)
         
         def f(t):
@@ -285,9 +287,6 @@ class ClosedCurve(_Curve):
     def resample(self, n):
         sample_points = np.linspace(0, 2*np.pi, n, endpoint=False)
         return self.query(sample_points)
-
-    def plot(self, ax, *args, **kwargs):
-        return ax.plot(self._cyclic_points[:, 0], self._cyclic_points[:, 1], *args, **kwargs)
 
     @property
     def range(self):
