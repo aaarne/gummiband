@@ -14,13 +14,13 @@ def arclength_parametrization(line):
 
 
 class _Curve:
-    def __init__(self, line, parameters, lazy=True):
+    def __init__(self, line, parameters, lazy=True, interpolation_type='quadratic'):
         self._points = line
         n = line.shape[1]
         self._dims = n
         self._parameters = parameters
         self._arclength = arclength_parametrization(line)
-        self._kdtree = None
+        self._intkind = interpolation_type
         if lazy:
             self._ints = None
             self._kdtt = None
@@ -54,10 +54,10 @@ class _Curve:
         return self._kdt.query(point, **kwargs)
 
     def _create_interpolators(self):
-        return [interp1d(self._parameters, self._points[:, i]) for i in range(self._dims)]
+        return [interp1d(self._parameters, self._points[:, i], kind=self._intkind) for i in range(self._dims)]
 
     def create_point_property_interpolator(self, prop):
-        return interp1d(self._parameters, prop)
+        return interp1d(self._parameters, prop, kind=self._intkind)
 
     def _query_single(self, t):
         return np.array([
@@ -119,7 +119,7 @@ class _Curve:
         _, point_on_curve = self.retract(point)
         return point_on_curve - point
 
-    def derivative(self, t, dt=1e-3, order=5):
+    def derivative(self, t, dt=1e-2, order=5, n=1):
         mi, ma = self.range
         ho = order >> 1
         if t - ho * dt < mi:
@@ -128,11 +128,22 @@ class _Curve:
             tprime = t - ho * dt
         else:
             tprime = t
-        return scipy.misc.derivative(self.__call__, tprime, dx=dt)
+        return scipy.misc.derivative(self.__call__, tprime, dx=dt, n=n)
 
     def tangent(self, t):
         d = self.derivative(t)
         return d / np.linalg.norm(d)
+
+    def normal(self, t):
+        return np.array([[0, -1], [1, 0]]) @ self.tangent(t)
+
+    def signed_curvature(self, t):
+        d = self.derivative(t)
+        dd = self.derivative(t, n=2)
+        return np.linalg.det(np.array([d, dd])) / np.linalg.norm(d)**3
+
+    def curvature(self, t):
+        return np.abs(self.signed_curvature(t))
 
     def parametrize(self, point):
         t, _ = self.retract(point)
@@ -240,13 +251,15 @@ class ArcLengthParametrizedCurve(_Curve):
 
 class ClosedCurve(_Curve):
     def __init__(self, points, **kwargs):
-        p = np.zeros((points.shape[0] + 1, points.shape[1]))
-        p[0:-1, :] = points
-        p[-1, :] = points[0, :]
-        self._cyclic_points = p
+        if np.linalg.norm(points[0] - points[-1]) < 1e-6:
+            p = points
+        else:
+            p = np.zeros((points.shape[0] + 1, points.shape[1]))
+            p[0:-1, :] = points
+            p[-1, :] = points[0, :]
         al = arclength_parametrization(p)
         al = 2*np.pi*al/al[-1] - np.pi
-        super().__init__(points, al[0:-1], **kwargs)
+        super().__init__(p, al, **kwargs)
 
     def _interpolate_parameters(self, values, weights):
         sins, coss = np.sin(values), np.cos(values)
@@ -257,10 +270,10 @@ class ClosedCurve(_Curve):
     def create_point_property_interpolator(self, prop):
         augmented_params = np.zeros(self.n_points + 2)
         augmented_params[1:-1] = self.parameters
-        augmented_params[0] = -np.pi if self.parameters[0] > -np.pi + 1e-3 else -np.pi - np.mean(np.diff(self.parameters))
-        augmented_params[-1] = np.pi if self.parameters[-1] < np.pi - 1e-3 else np.pi + np.mean(np.diff(self.parameters))
-        p = np.r_[prop[-1], prop, prop[0]]
-        int = interp1d(augmented_params, p, fill_value='extrapolate')
+        augmented_params[0] = -np.pi - np.mean(np.diff(self.parameters))
+        augmented_params[-1] = np.pi + np.mean(np.diff(self.parameters))
+        p = np.r_[prop[-2], prop, prop[1]]
+        int = interp1d(augmented_params, p, fill_value='extrapolate', kind=self._intkind)
         
         def f(t):
             new_t = np.arctan2(np.sin(t), np.cos(t))
@@ -274,9 +287,6 @@ class ClosedCurve(_Curve):
     def resample(self, n):
         sample_points = np.linspace(0, 2*np.pi, n, endpoint=False)
         return self.query(sample_points)
-
-    def plot(self, ax, *args, **kwargs):
-        return ax.plot(self._cyclic_points[:, 0], self._cyclic_points[:, 1], *args, **kwargs)
 
     @property
     def range(self):
