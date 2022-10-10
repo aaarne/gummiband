@@ -14,7 +14,6 @@ class Gummiband:
         self._gb = initial_curve
         l = self._gb.compute_riemannian_length(metric, res=res)
         self._points_per_length = initial_curve.n_points / initial_curve.arclength
-        print(f"Points per length: {self._points_per_length}")
         self._lens = [l]
         self._metric = metric if metric else Euclidean
         self._fix_enpoints = fix_endpoints
@@ -99,6 +98,7 @@ class Gummiband:
                               target_points=n_points,
                               caching=caching)
                 total_steps += steps
+                self._lens.append(self.loss())
                 com = np.mean(self.curve.points, axis=0)
                 com_vel = np.linalg.norm(com - last_com)
                 last_com = com
@@ -107,7 +107,6 @@ class Gummiband:
                 break
 
             epoch += 1
-            self._lens.append(self.loss())
             yield self.curve, self.loss(), v, com_vel, total_steps
 
             if epochs:
