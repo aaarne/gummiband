@@ -138,7 +138,7 @@ class Gummiband:
         points_before = self._gb.points.copy()
         metric_forces = self.compute_metric_forces() if caching else np.zeros_like(points_before)
         ds = self._gb.arclength / self.curve.n_points
-        rate = min(.1, dt/(ds**2))
+        rate = dt/(ds**2)
 
         def get_metric_forces():
             if caching:
