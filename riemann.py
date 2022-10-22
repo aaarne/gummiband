@@ -19,8 +19,11 @@ def compute_length(start, end, metric, resolution=1e-3, steps=None):
     """
     d = end - start
 
-    if metric is None or metric.is_euclidean:
-        return np.linalg.norm(d)
+    try:
+        if metric is None or metric.is_euclidean:
+            return np.linalg.norm(d)
+    except AttributeError:
+        pass  # ignore
 
     def finite_sum(n):
         vector = d / n
