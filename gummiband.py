@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from allerlei import progressify, Timer
 from .metric import Euclidean
@@ -138,7 +140,7 @@ class Gummiband:
         points_before = self._gb.points.copy()
         metric_forces = self.compute_metric_forces() if caching else np.zeros_like(points_before)
         ds = self._gb.arclength / self.curve.n_points
-        rate = min(.1, dt/(ds**2))
+        rate = dt/(ds**2)
 
         def get_metric_forces():
             if caching:
@@ -184,7 +186,11 @@ class Gummiband:
     @property
     def history(self):
         if self._history:
-            return np.array(self._h)
+            try:
+                return np.array(self._h)
+            except ValueError:
+                warnings.warn("History has no single shape. Returning empty array.")
+                return np.array([])
         else:
             raise ValueError("History not actived")
 

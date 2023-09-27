@@ -14,7 +14,7 @@ def arclength_parametrization(line):
 
 
 class _Curve:
-    def __init__(self, line, parameters, lazy=True, interpolation_type='quadratic'):
+    def __init__(self, line, parameters, lazy=True, interpolation_type='linear'):
         self._points = line
         n = line.shape[1]
         self._dims = n
